@@ -1,5 +1,5 @@
 // src/components/ArtworkTable.tsx
-import React, { useRef, useMemo } from "react";
+import { useRef, useMemo } from "react";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
