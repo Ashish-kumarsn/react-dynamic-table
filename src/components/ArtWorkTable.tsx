@@ -1,5 +1,5 @@
 // src/components/ArtworkTable.tsx
-import React, { useRef } from "react";
+import React, { useRef, useMemo } from "react";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
@@ -13,7 +13,7 @@ type Props = {
   onSelectionChange: (selected: Artwork[]) => void;
   loading?: boolean;
 
-  // new props for bulk + clear
+  // Bulk selection props
   bulkNumber: number;
   setBulkNumber: (n: number) => void;
   onBulkSelect: () => void;
@@ -32,32 +32,32 @@ export default function ArtworkTable({
   bulkLoading,
   onClearAll,
 }: Props) {
-  const currentSelection = React.useMemo(
-    () => data.filter((r) => selectedIds.has(r.id)),
+  const overlayRef = useRef<OverlayPanel>(null);
+
+  // Keep track of currently selected artworks
+  const selectedArtworks = useMemo(
+    () => data.filter((item) => selectedIds.has(item.id)),
     [data, selectedIds]
   );
 
-  const op = useRef<OverlayPanel>(null);
-
-  // Custom header for Title column with overlay trigger
-  const titleHeader = (
+  // Custom header for the Title column, includes bulk actions
+  const titleColumnHeader = (
     <div className="title-header">
       <span>Title</span>
       <Button
         icon="pi pi-chevron-down"
-        rounded
         text
+        rounded
         severity="secondary"
-        onClick={(e) => op.current?.toggle(e)}
+        onClick={(e) => overlayRef.current?.toggle(e)}
         aria-label="Bulk actions"
       />
 
-      {/* Overlay with Bulk + ClearAll */}
       <OverlayPanel
-        ref={op}
+        ref={overlayRef}
         showCloseIcon
         dismissable
-        style={{ width: 350, minWidth: "280px" }}
+        style={{ width: 350, minWidth: 280 }}
       >
         <div className="overlay-actions">
           <BulkSelect
@@ -97,7 +97,7 @@ export default function ArtworkTable({
             width: 100%;
           }
 
-          /* Responsive fixes */
+          /* Responsive adjustments */
           @media (max-width: 768px) {
             .p-datatable {
               font-size: 13px;
@@ -129,8 +129,10 @@ export default function ArtworkTable({
     <DataTable
       value={data}
       dataKey="id"
-      selection={currentSelection}
-      onSelectionChange={(e: { value: Artwork[] }) => onSelectionChange(e.value)}
+      selection={selectedArtworks}
+      onSelectionChange={(e: { value: Artwork[] }) =>
+        onSelectionChange(e.value)
+      }
       loading={loading}
       selectionMode="multiple"
       scrollable
@@ -138,7 +140,7 @@ export default function ArtworkTable({
       className="p-datatable-sm"
     >
       <Column selectionMode="multiple" headerStyle={{ width: "3rem" }} />
-      <Column field="title" header={titleHeader} />
+      <Column field="title" header={titleColumnHeader} />
       <Column field="place_of_origin" header="Place of Origin" />
       <Column field="artist_display" header="Artist Display" />
       <Column field="inscriptions" header="Inscriptions" />

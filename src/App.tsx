@@ -7,80 +7,88 @@ import BulkSelect from "./components/BulkSelect";
 import { Button } from "primereact/button";
 
 const App: React.FC = () => {
-  const [page, setPage] = useState<number>(1);
+  const [page, setPage] = useState(1);
   const [data, setData] = useState<Artwork[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
+  const [loading, setLoading] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
-  const [bulkNumber, setBulkNumber] = useState<number>(0);
-  const [bulkLoading, setBulkLoading] = useState<boolean>(false);
-  const [totalPages, setTotalPages] = useState<number>(1);
+  const [bulkNumber, setBulkNumber] = useState(0);
+  const [bulkLoading, setBulkLoading] = useState(false);
+  const [totalPages, setTotalPages] = useState(1);
 
-  // fetch page each time page changes (no caching full page)
+  // Fetch data whenever page changes
   useEffect(() => {
-    let mounted = true;
+    let isMounted = true;
     setLoading(true);
+
     fetchPage(page)
       .then((res) => {
-        if (!mounted) return;
+        if (!isMounted) return;
         setData(res.data);
         setTotalPages(res.pagination.total_pages ?? 1);
       })
-      .catch((err) => console.error(err))
-      .finally(() => mounted && setLoading(false));
+      .catch(console.error)
+      .finally(() => isMounted && setLoading(false));
+
     return () => {
-      mounted = false;
+      isMounted = false;
     };
   }, [page]);
 
-  // When selection on current page changes, update global selectedIds (Set)
+  // Update global selectedIds when selection changes on current page
   const handleSelectionChange = (selectedRows: Artwork[]) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
-      const currentPageIds = data.map((d) => d.id);
+      const pageIds = data.map((d) => d.id);
       const selectedOnPage = new Set(selectedRows.map((r) => r.id));
 
+      // Add newly selected IDs
       selectedOnPage.forEach((id) => next.add(id));
-      currentPageIds.forEach((id) => {
+      // Remove unselected IDs from current page
+      pageIds.forEach((id) => {
         if (!selectedOnPage.has(id)) next.delete(id);
       });
+
       return next;
     });
   };
 
-  // Bulk select N rows starting from current page (sequentially fetch pages).
+  // Bulk select N rows starting from current page
   const handleBulkSelect = async () => {
     if (bulkNumber <= 0) return;
+
     setBulkLoading(true);
     try {
-      let need = bulkNumber;
-      let p = page;
-      const nextSet = new Set(selectedIds);
+      let remaining = bulkNumber;
+      let currentPage = page;
+      const newSelected = new Set(selectedIds);
 
-      const firstPageInfo = await fetchPage(p);
-      let maxPages = firstPageInfo.pagination.total_pages ?? totalPages;
+      const firstPage = await fetchPage(currentPage);
+      const maxPages = firstPage.pagination.total_pages ?? totalPages;
 
-      for (const row of firstPageInfo.data) {
-        if (need <= 0) break;
-        if (!nextSet.has(row.id)) {
-          nextSet.add(row.id);
-          need--;
+      // Select rows from current page
+      for (const row of firstPage.data) {
+        if (remaining <= 0) break;
+        if (!newSelected.has(row.id)) {
+          newSelected.add(row.id);
+          remaining--;
         }
       }
-      p++;
+      currentPage++;
 
-      while (need > 0 && p <= maxPages) {
-        const res = await fetchPage(p);
+      // Continue selecting from subsequent pages if needed
+      while (remaining > 0 && currentPage <= maxPages) {
+        const res = await fetchPage(currentPage);
         for (const row of res.data) {
-          if (need <= 0) break;
-          if (!nextSet.has(row.id)) {
-            nextSet.add(row.id);
-            need--;
+          if (remaining <= 0) break;
+          if (!newSelected.has(row.id)) {
+            newSelected.add(row.id);
+            remaining--;
           }
         }
-        p++;
+        currentPage++;
       }
 
-      setSelectedIds(nextSet);
+      setSelectedIds(newSelected);
     } catch (err) {
       console.error(err);
     } finally {
@@ -97,7 +105,7 @@ const App: React.FC = () => {
     <div style={{ padding: 20 }}>
       <h2>Artworks (PrimeReact DataTable)</h2>
 
-      {/* Table */}
+      {/* Artwork table with multi-selection and bulk actions */}
       <ArtworkTable
         data={data}
         selectedIds={selectedIds}
@@ -110,7 +118,7 @@ const App: React.FC = () => {
         onClearAll={handleClearAll}
       />
 
-      {/* Footer Controls */}
+      {/* Footer controls */}
       <div
         style={{
           marginTop: 16,
@@ -135,7 +143,7 @@ const App: React.FC = () => {
           disabled={page >= totalPages || loading}
         />
 
-        {/* Bulk Select */}
+        {/* Bulk select */}
         <BulkSelect
           value={bulkNumber}
           onChange={setBulkNumber}
@@ -143,7 +151,7 @@ const App: React.FC = () => {
           loading={bulkLoading}
         />
 
-        {/* Clear All */}
+        {/* Clear all selection */}
         <Button
           label="Clear All"
           severity="danger"
@@ -156,7 +164,7 @@ const App: React.FC = () => {
           style={{
             marginLeft: "auto",
             padding: "4px 12px",
-            borderRadius: "12px",
+            borderRadius: 12,
             background: "black",
             color: "white",
             fontWeight: 600,
@@ -167,7 +175,7 @@ const App: React.FC = () => {
         </div>
       </div>
 
-      {/* Responsive styling */}
+      {/* Responsive adjustments */}
       <style>
         {`
           @media (max-width: 768px) {
